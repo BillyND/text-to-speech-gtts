@@ -10,4 +10,7 @@ Thumbs.db
 
 audio
 audio/*
+
+videos
+videos/*
 .yarn.lock

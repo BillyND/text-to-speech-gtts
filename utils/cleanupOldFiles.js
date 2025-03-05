@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { createDirIfNotExists } = require("./createDirIfNotExists");
 
 // Function to delete audio files older than 1 hour
 function cleanupOldFiles(audioDir) {
@@ -7,6 +8,8 @@ function cleanupOldFiles(audioDir) {
     console.error("Error: audioDir is undefined.");
     return;
   }
+
+  createDirIfNotExists(audioDir);
 
   const now = Date.now();
 
@@ -25,8 +28,8 @@ function cleanupOldFiles(audioDir) {
           return;
         }
 
-        // Check if the file is older than 30 seconds
-        if (now - stats.mtimeMs > 30000) {
+        // Check if the file is older than 10 seconds
+        if (now - stats.mtimeMs > 10000) {
           fs.unlink(filePath, (err) => {
             if (err) {
               console.error("Error deleting file:", err);
