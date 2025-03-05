@@ -1,89 +1,66 @@
 const express = require("express");
-const gtts = require("gtts");
-const dotenv = require("dotenv");
-const fs = require("fs");
-const path = require("path");
 const { exec } = require("child_process");
+const dotenv = require("dotenv");
+const gtts = require("gtts");
+const path = require("path");
 const { LANGUAGES } = require("./constant");
 const { cleanupOldFiles } = require("./utils/cleanupOldFiles");
 const { generateHomeHTML } = require("./utils/generateHomeHTML");
 const { formatTextWithGemini } = require("./utils/formatTextWithGemini");
 
 dotenv.config();
+
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static("public")); // Directory containing static CSS/JS files
+app.use(express.static("public")); // Static files (CSS, JS)
 
-// Audio storage directory
-const audioDir = path.join(__dirname, "audio");
-
+// 🚀 API TTS - Streaming không lưu file
 app.post("/tts", async (req, res) => {
   let { text, speed = 1, language = "vi" } = req.body;
-  const isVietnamese = language === "vi";
+  if (!text) return res.status(400).send("Text is required");
 
-  if (!text) {
-    return res.status(400).send("Text is required");
-  }
-
-  if (isVietnamese) {
+  if (language === "vi") {
     text = await formatTextWithGemini(text);
   }
 
-  if (!fs.existsSync(audioDir)) {
-    fs.mkdirSync(audioDir, { recursive: true });
-  }
-
   try {
-    const safeText = text.substring(0, 100).replace(/[^a-zA-Z0-9]/g, "_");
-    const fileName = `${safeText}_speed_${speed}.mp3`;
-    const filePath = path.join(audioDir, fileName);
-    const tempFile = path.join(audioDir, `temp_${safeText}.mp3`);
-
-    // if (fs.existsSync(filePath)) {
-    //   return res.sendFile(filePath);
-    // }
-
     const speech = new gtts(text, language);
+    const speechStream = speech.stream();
 
-    speech.save(tempFile, async function (err) {
-      if (err) {
-        return res.status(500).send("Error generating speech");
-      }
+    res.setHeader("Content-Type", "audio/mpeg");
 
-      if (Number(speed) !== 1) {
-        const atempo = Math.max(0.5, Math.min(2.0, speed));
-        const ffmpegCmd = `ffmpeg -i "${tempFile}" -filter:a "atempo=${atempo}" -y "${filePath}"`;
+    if (Number(speed) !== 1) {
+      // Thay đổi tốc độ âm thanh bằng FFmpeg mà không lưu file
+      const atempo = Math.max(0.5, Math.min(2.0, speed));
+      const ffmpegCmd = `ffmpeg -i pipe:0 -filter:a "atempo=${atempo}" -f mp3 pipe:1`;
 
-        exec(ffmpegCmd, (error) => {
-          if (error) {
-            console.error("FFmpeg Error:", error);
-            return res.status(500).send("Error processing audio speed");
-          }
+      const ffmpegProcess = exec(ffmpegCmd, {
+        encoding: "buffer",
+        maxBuffer: 10 * 1024 * 1024,
+      });
 
-          fs.unlink(tempFile, (unlinkErr) => {
-            if (unlinkErr) {
-              console.error("Error deleting temporary file:", unlinkErr);
-            }
-          });
+      speechStream.pipe(ffmpegProcess.stdin);
+      ffmpegProcess.stdout?.pipe(res);
 
-          res.sendFile(filePath);
-        });
-      } else {
-        // If speed = 1, just rename the file and send it
-        fs.renameSync(tempFile, filePath);
-        res.sendFile(filePath);
-      }
-    });
+      ffmpegProcess.on("error", (err) => {
+        console.error("FFmpeg Error:", err);
+        res.status(500).send("Error processing audio");
+      });
+    } else {
+      // Stream trực tiếp nếu không cần thay đổi tốc độ
+      speechStream.pipe(res);
+    }
   } catch (error) {
     console.error("Error generating speech:", error);
-    return res.status(500).send("Error generating speech");
+    res.status(500).send("Error generating speech");
   }
 });
 
+// 🚀 Trang chủ UI đơn giản
 app.get("/", (req, res) => {
-  cleanupOldFiles(audioDir);
+  cleanupOldFiles(path.join(__dirname, "audio"));
 
   const languageOptions = Object.entries(LANGUAGES)
     .map(([code, name]) => `<option value="${code}">${name}</option>`)
