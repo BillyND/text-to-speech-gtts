@@ -1,7 +1,7 @@
-const fs = require("fs");
+import fs from "fs";
 
 // Function to download images from URL
-async function downloadImage(url, filepath) {
+export const downloadImage = async (url, filepath) => {
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to fetch ${url}`);
@@ -12,6 +12,4 @@ async function downloadImage(url, filepath) {
     console.error(`Error downloading image: ${url}`, error);
     throw error;
   }
-}
-
-module.exports = { downloadImage };
+};

@@ -1,9 +1,9 @@
-const fs = require("fs");
-const path = require("path");
-const { createDirIfNotExists } = require("./createDirIfNotExists");
+import fs from "fs";
+import path from "path";
+import { createDirIfNotExists } from "./createDirIfNotExists.js";
 
 // Function to delete audio files older than 1 hour
-function cleanupOldFiles(audioDir) {
+export const cleanupOldFiles = (audioDir) => {
   if (!audioDir) {
     console.error("Error: audioDir is undefined.");
     return;
@@ -41,6 +41,4 @@ function cleanupOldFiles(audioDir) {
       });
     });
   });
-}
-
-module.exports = { cleanupOldFiles };
+};

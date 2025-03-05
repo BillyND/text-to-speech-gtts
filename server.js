@@ -1,13 +1,18 @@
-const express = require("express");
-const gtts = require("gtts");
-const dotenv = require("dotenv");
-const fs = require("fs");
-const path = require("path");
-const { exec } = require("child_process");
-const { cleanupOldFiles } = require("./utils/cleanupOldFiles");
-const { formatTextWithGemini } = require("./utils/formatTextWithGemini");
-const { createDirIfNotExists } = require("./utils/createDirIfNotExists");
-const { downloadImage } = require("./utils/downloadImage");
+import express from "express";
+import gtts from "gtts";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { exec } from "child_process";
+import { formatTextWithGemini } from "./utils/formatTextWithGemini.js";
+import { createDirIfNotExists } from "./utils/createDirIfNotExists.js";
+import { downloadImage } from "./utils/downloadImage.js";
+import { cleanupOldFiles } from "./utils/cleanupOldFiles.js";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 dotenv.config();
 const app = express();
@@ -102,7 +107,7 @@ app.post("/tts", async (req, res) => {
     const tempFile = path.join(audioDir, `temp_audio_${now}.mp3`);
     const speech = new gtts(formattedText, language);
 
-    speech.save(tempFile, function (err) {
+    speech.save(tempFile, (err) => {
       if (err) {
         return res.status(500).send("Error generating speech");
       }
