@@ -4,7 +4,6 @@ const dotenv = require("dotenv");
 const gtts = require("gtts");
 const path = require("path");
 const { LANGUAGES } = require("./constant");
-const { cleanupOldFiles } = require("./utils/cleanupOldFiles");
 const { generateHomeHTML } = require("./utils/generateHomeHTML");
 const { formatTextWithGemini } = require("./utils/formatTextWithGemini");
 
@@ -60,8 +59,6 @@ app.post("/tts", async (req, res) => {
 
 // 🚀 Trang chủ UI đơn giản
 app.get("/", (req, res) => {
-  cleanupOldFiles(path.join(__dirname, "audio"));
-
   const languageOptions = Object.entries(LANGUAGES)
     .map(([code, name]) => `<option value="${code}">${name}</option>`)
     .join("");
