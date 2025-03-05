@@ -6,6 +6,8 @@ node_modules/
 npm-debug.log
 .DS_Store
 Thumbs.db
-.audio
-.audio/*
+
+
+audio
+audio/*
 .yarn.lock

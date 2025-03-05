@@ -1,4 +1,3 @@
-const { ONE_HOUR_IN_MILLISECONDS } = require("../constant");
 const fs = require("fs");
 const path = require("path");
 
@@ -26,7 +25,8 @@ function cleanupOldFiles(audioDir) {
           return;
         }
 
-        if (now - stats.mtimeMs > 1000) {
+        // Check if the file is older than 30 seconds
+        if (now - stats.mtimeMs > 30000) {
           fs.unlink(filePath, (err) => {
             if (err) {
               console.error("Error deleting file:", err);
