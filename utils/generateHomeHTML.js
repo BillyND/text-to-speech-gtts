@@ -38,6 +38,34 @@ function generateHomeHTML(languageOptions) {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
+
+
+          .checkbox {
+            appearance: none;
+            background-color: #2d3748;
+            border: 2px solid #4a5568;
+            padding: 9px;
+            border-radius: 4px;
+            display: inline-block;
+            position: relative;
+            vertical-align: middle; /* Align checkbox vertically */
+          }
+          .checkbox:checked {
+            background-color: #667eea;
+            border-color: #667eea;
+          }
+          .checkbox:checked::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            top: 50%; /* Center vertically */
+            left: 50%; /* Center horizontally */
+            transform: translate(-50%, -50%) rotate(45deg); /* Adjust center and rotate */
+          }
+
         </style>
       </head>
       <body class="bg-gray-900 text-white font-sans">
@@ -57,17 +85,21 @@ function generateHomeHTML(languageOptions) {
                 <label class="block text-gray-300 mb-2">Enter Text:</label>
                 <textarea id="textInput" class="w-full p-3 bg-gray-700 text-white rounded-md focus:ring focus:ring-blue-500 transition resize-none h-24" placeholder="Type your text here..."></textarea>
               </div>
-              <div class="mb-2">
+              <div class="mt-4">
                 <label class="block text-gray-300 mb-2">Select Language:</label>
                 <select id="languageSelect" class="w-full p-3 bg-gray-700 text-white rounded-md">
                   ${languageOptions}
                 </select>
               </div>
-              <div class="mb-4">
+              <div class="mt-4 flex items-center">
+                <label for="optimizeWithAI" class="block text-gray-300 cursor-pointer">Optimize with AI:</label>
+                <input type="checkbox" id="optimizeWithAI" class="checkbox mt-1 mx-4">
+              </div>
+              <div class="mt-4">
                 <label class="block text-gray-300 mb-2">Speed: <span id="speedValue">1</span>x</label>
                 <input type="range" id="speedSlider" class="w-full" min="0.5" max="2" step="0.1" value="1">
               </div>
-              <button id="generateButton" class="w-full p-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition flex items-center justify-center" onclick="generateSpeech()">
+              <button id="generateButton" class="mt-4 w-full p-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition flex items-center justify-center" onclick="generateSpeech()">
                 Generate Speech
               </button>
               <div class="flex justify-center mt-4 hidden" id="loadingIndicator">
@@ -141,12 +173,13 @@ function generateHomeHTML(languageOptions) {
             document.getElementById("generateButton").disabled = true;
             document.getElementById("generateButton").classList.add("opacity-50", "cursor-not-allowed");
             document.getElementById("audioContainer").innerHTML = "";
+            const isOptimizeWithAI = document.getElementById("optimizeWithAI")?.checked
 
   
             fetch("/tts", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text, speed, language })
+              body: JSON.stringify({ text, speed, language, isOptimizeWithAI })
             })
             .then(response => response.blob())
             .then(blob => {

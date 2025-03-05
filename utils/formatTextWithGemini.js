@@ -13,10 +13,12 @@ async function formatTextWithGemini(text) {
             {
               parts: [
                 {
-                  text: ` Làm phẳng văn bản để dễ đọc hơn.
-                        - Loại bỏ các từ giải thích khi dùng mở ngoặc. cụm liên quan đến "text to speech" thì giữ nguyên.
+                  text: `Làm phẳng văn bản để dễ đọc hơn.
+                        - Loại bỏ các từ giải thích khi dùng mở ngoặc. Cụm liên quan đến "text to speech" thì giữ nguyên.
                              VD1: "Bảng xếp hạng (BXH)" => "bảng xếp hạng"
                              VD2: "trí tuệ nhân tạo (AI)" => "AI".
+                        - Các số dạng nghìn như là 4.000 thì loại bỏ dấu chấm ngắn cách giữa các số thành 4000.
+                        - Hãy review thật kỹ các ký tự, số học mà khó đọc thì hãy biến đổi nó thành chữ dễ đọc.
 
                         - Các ký tự đặc biệt không thuộc bảng chữ cái tiếng Việt sẽ được diễn giải dựa vào ngữ cảnh.
                         - Xoá toàn bộ dấu ngoặc kép.
@@ -35,6 +37,17 @@ async function formatTextWithGemini(text) {
     );
 
     const data = await response.json();
+
+    console.log(
+      "===> text",
+      data &&
+        data.candidates &&
+        data.candidates[0] &&
+        data.candidates[0].content &&
+        data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0] &&
+        data.candidates[0].content.parts[0].text
+    );
 
     return data?.candidates?.[0]?.content?.parts?.[0]?.text || text;
   } catch (error) {

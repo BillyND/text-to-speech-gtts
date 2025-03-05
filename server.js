@@ -17,10 +17,10 @@ app.use(express.static("public")); // Static files (CSS, JS)
 
 // 🚀 API TTS - Streaming không lưu file
 app.post("/tts", async (req, res) => {
-  let { text, speed = 1, language = "vi" } = req.body;
+  let { text, speed = 1, language = "vi", isOptimizeWithAI = false } = req.body;
   if (!text) return res.status(400).send("Text is required");
 
-  if (language === "vi") {
+  if (language === "vi" && isOptimizeWithAI) {
     text = await formatTextWithGemini(text);
   }
 
