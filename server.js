@@ -12,6 +12,8 @@ const fetch = require("node-fetch");
 const { createSlideshow } = require("slideshow-video");
 const { TRIGGER_URLS } = require("./constant");
 const { sleep } = require("./utils/sleep");
+const sharp = require("sharp");
+const getColors = require("get-image-colors");
 
 dotenv.config();
 const app = express();
@@ -43,44 +45,102 @@ app.post("/slideshow", async (req, res) => {
     await Promise.all([cleanupOldFiles(audioDir), cleanupOldFiles(videoDir)]);
     const now = Date.now();
     const outputVideo = path.join(videoDir, `slideshow_${now}.mp4`);
-    const localImages = [];
+    const localImages = new Array(images.length);
 
-    // Download images and store locally
     await Promise.all(
       images.map(async (imagePath, i) => {
         if (imagePath.startsWith("http")) {
           const localPath = path.join(videoDir, `${i}.png`);
+
           try {
-            await downloadImage(imagePath, localPath);
-            localImages.push({ filePath: localPath });
-          } catch (downloadError) {
-            console.error(
-              `Failed to download image ${imagePath}:`,
-              downloadError
+            const downloadedBuffer = await downloadImage(imagePath);
+
+            const colors = await getColors(
+              await sharp(downloadedBuffer).jpeg().toBuffer(),
+              "image/jpeg"
             );
-            // Consider how to handle a failed download.  For example, skip the image or return an error.
-            // For now, we'll skip it.
+            const [color1, color2] = colors.map((c) => c.hex());
+
+            const gradientBackground = `
+              <svg width="1080" height="1920">
+                <defs>
+                  <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="${color1}" />
+                    <stop offset="100%" stop-color="${color2}" />
+                  </linearGradient>
+                </defs>
+                <rect width="1080" height="1920" fill="url(#bgGrad)" />
+              </svg>`;
+
+            const resizedImageBuffer = await sharp(downloadedBuffer)
+              .resize({ width: 1080, height: 1080, fit: "cover" })
+              .png()
+              .toBuffer();
+
+            image = sharp(Buffer.from(gradientBackground)).composite([
+              { input: resizedImageBuffer, gravity: "center" },
+            ]);
+
+            let svgOverlay = `
+                <svg width="1080" height="1920">
+                 ${
+                   i === 0
+                     ? `  <defs>
+                    <linearGradient id="fadeGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+                      <stop offset="0%" stop-color="rgba(255,0,0,0.3)" />
+                      <stop offset="100%" stop-color="rgba(255,0,0,0)" />
+                    </linearGradient>
+                  </defs>`
+                     : ""
+                 }
+                
+                  <rect width="1080" height="1920" fill="url(#fadeGrad)" />
+                  ${
+                    i === 0
+                      ? `<text x="20" y="1600" font-size="60px" fill="white" font-family="sans-serif" font-weight="900">ẢNH MỘT ĐÂY NÀY</text>`
+                      : ""
+                  }
+                  <g transform="rotate(15 925,185)">
+                    <text x="900" y="170" font-size="70px" fill="white" font-family="sans-serif" font-weight="900">HOT</text>
+                    <text x="950" y="200" font-size="30px" fill="white" font-family="sans-serif" font-weight="900">NEWS</text>
+                  </g>
+                  <text x="20" y="160" font-size="30px" fill="white" font-family="sans-serif" font-weight="900">NGUỒN: TỔNG HỢP</text>
+                  <text x="20" y="200" font-size="30px" fill="white" font-family="sans-serif" font-weight="900">HÌNH ẢNH VIDEO: MINH HỌA</text>
+                </svg>`;
+
+            image = image.composite([
+              { input: resizedImageBuffer, gravity: "center" },
+              { input: Buffer.from(svgOverlay), gravity: "south" },
+            ]);
+
+            const finalBuffer = await image.png().toBuffer();
+
+            await fs.promises.writeFile(localPath, finalBuffer);
+            localImages[i] = localPath;
+          } catch (err) {
+            console.error(`Error processing image ${imagePath}:`, err);
           }
         }
       })
     );
 
-    // Slideshow options
     const options = {
-      imageOptions: { imageDuration: duration * 1000 },
-      transitionOptions: { transitionDuration: 250 },
+      imageOptions: {
+        imageDuration: duration * 1000,
+      },
+      transitionOptions: {
+        transitionDuration: 250,
+        imageTransition: "smoothleft",
+        loopTransition: "fadeslow",
+      },
       ffmpegOptions: {
         fps,
-        showFfmpegOutput: false,
-        showFfmpegCommand: false, // It's better to hide this in production
-        streamCopyAudio: true,
-        videoCodec: "libx264",
-        x264Preset: "ultrafast",
       },
     };
 
     // Generate slideshow video
     try {
+      /**@see https://0x464e.github.io/slideshow-video/ */
       const result = await createSlideshow([...localImages], "", options);
       fs.writeFileSync(outputVideo, result.buffer);
       res.sendFile(

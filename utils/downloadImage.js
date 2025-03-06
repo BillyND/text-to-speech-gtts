@@ -1,17 +1,15 @@
 const fs = require("fs");
 
 // Function to download images from URL
-async function downloadImage(url, filepath) {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch ${url}`);
+async function downloadImage(url) {
+  const response = await fetch(url);
 
-    const buffer = await response.arrayBuffer();
-    await fs.promises.writeFile(filepath, Buffer.from(buffer));
-  } catch (error) {
-    console.error(`Error downloading image: ${url}`, error);
-    throw error;
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.statusText}`);
   }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  return buffer;
 }
 
 module.exports = { downloadImage };
