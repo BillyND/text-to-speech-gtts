@@ -77,10 +77,6 @@ const fetchNewsData = async () => {
                 const contentLength =
                   audioResponse.headers.get("content-length");
                 if (contentLength && parseInt(contentLength) > 320000) {
-                  console.log(
-                    `Audio content length:${title.textContent} ${contentLength}`
-                  );
-
                   audioLink = audioUrl;
                 }
               }

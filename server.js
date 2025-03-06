@@ -257,7 +257,7 @@ function renderNewsTable(results) {
     htmlResponse += `<tr><td><strong>${newsItem.title}</strong></td><td>`;
     if (newsItem.images && newsItem.images.length > 0) {
       newsItem.images.forEach((image) => {
-        htmlResponse += `<img src="${image}" alt="${newsItem.title}" style="width:200px;"><br>`;
+        htmlResponse += `<img src="${image}" alt="${newsItem.title}" style="width:200px;" loading="lazy"><br>`;
       });
     }
     htmlResponse += `</td><td>`;
