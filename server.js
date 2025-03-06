@@ -1,4 +1,5 @@
 const express = require("express");
+const { createCanvas, loadImage } = require("canvas");
 const gtts = require("gtts");
 const dotenv = require("dotenv");
 const fs = require("fs");
@@ -8,12 +9,8 @@ const { cleanupOldFiles } = require("./utils/cleanupOldFiles");
 const { formatTextWithGemini } = require("./utils/formatTextWithGemini");
 const { createDirIfNotExists } = require("./utils/createDirIfNotExists");
 const { downloadImage } = require("./utils/downloadImage");
-const fetch = require("node-fetch");
 const { createSlideshow } = require("slideshow-video");
-const { TRIGGER_URLS } = require("./constant");
-const { sleep } = require("./utils/sleep");
-const sharp = require("sharp");
-const getColors = require("get-image-colors");
+const { fetchNewsData } = require("./utils/fetchNewsData");
 
 dotenv.config();
 const app = express();
@@ -26,23 +23,47 @@ app.use(express.static("public"));
 const audioDir = path.join(__dirname, "audio");
 const videoDir = path.join(__dirname, "videos");
 
+// 🎨 Hàm lấy màu trung bình của ảnh (CẦN ĐỊNH NGHĨA TRƯỚC KHI GỌI)
+async function getAverageColor(image) {
+  const tempCanvas = createCanvas(image.width, image.height);
+  const tempCtx = tempCanvas.getContext("2d");
+  tempCtx.drawImage(image, 0, 0, image.width, image.height);
+
+  // Lấy dữ liệu pixel
+  const imageData = tempCtx.getImageData(0, 0, image.width, image.height).data;
+
+  let r = 0,
+    g = 0,
+    b = 0,
+    count = 0;
+  for (let i = 0; i < imageData.length; i += 4) {
+    r += imageData[i]; // Red
+    g += imageData[i + 1]; // Green
+    b += imageData[i + 2]; // Blue
+    count++;
+  }
+
+  return {
+    r: Math.floor(r / count),
+    g: Math.floor(g / count),
+    b: Math.floor(b / count),
+  };
+}
+
 app.post("/slideshow", async (req, res) => {
   const { images, duration = 1, fps = 60 } = req.body;
 
-  // Validate images array
   if (!images || !Array.isArray(images) || images.length === 0) {
     return res.status(400).send("Invalid image list");
   }
 
   try {
-    // Ensure video directory exists and cleanup old files
     await Promise.all([
       createDirIfNotExists(videoDir),
       cleanupOldFiles(videoDir),
       cleanupOldFiles(audioDir),
     ]);
 
-    await Promise.all([cleanupOldFiles(audioDir), cleanupOldFiles(videoDir)]);
     const now = Date.now();
     const outputVideo = path.join(videoDir, `slideshow_${now}.mp4`);
     const localImages = new Array(images.length);
@@ -51,71 +72,68 @@ app.post("/slideshow", async (req, res) => {
       images.map(async (imagePath, i) => {
         if (imagePath.startsWith("http")) {
           const localPath = path.join(videoDir, `${i}.png`);
-
           try {
             const downloadedBuffer = await downloadImage(imagePath);
+            const img = await loadImage(downloadedBuffer);
 
-            const colors = await getColors(
-              await sharp(downloadedBuffer).jpeg().toBuffer(),
-              "image/jpeg"
+            // 💡 Gọi hàm getAverageColor đúng cách
+            const avgColor = await getAverageColor(img);
+            const lightColor = `rgb(${Math.min(
+              avgColor.r + 30,
+              255
+            )}, ${Math.min(avgColor.g + 30, 255)}, ${Math.min(
+              avgColor.b + 30,
+              255
+            )})`;
+            const darkColor = `rgb(${Math.max(avgColor.r - 30, 0)}, ${Math.max(
+              avgColor.g - 30,
+              0
+            )}, ${Math.max(avgColor.b - 30, 0)})`;
+
+            // Canvas setup
+            const canvasWidth = 1080;
+            const canvasHeight = 1920;
+            const canvas = createCanvas(canvasWidth, canvasHeight);
+            const ctx = canvas.getContext("2d");
+
+            // 🎨 Gradient background
+            const gradient = ctx.createLinearGradient(
+              0,
+              0,
+              canvasWidth,
+              canvasHeight
             );
-            const [color1, color2] = colors.map((c) => c.hex());
+            gradient.addColorStop(0, lightColor);
+            gradient.addColorStop(1, darkColor);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-            const gradientBackground = `
-              <svg width="1080" height="1920">
-                <defs>
-                  <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="${color1}" />
-                    <stop offset="100%" stop-color="${color2}" />
-                  </linearGradient>
-                </defs>
-                <rect width="1080" height="1920" fill="url(#bgGrad)" />
-              </svg>`;
+            // Lấy tỷ lệ scale để ảnh "contain" trong khung
+            const scale = Math.min(
+              canvasWidth / img.width,
+              canvasHeight / img.height
+            );
+            const drawWidth = img.width * scale;
+            const drawHeight = img.height * scale;
 
-            const resizedImageBuffer = await sharp(downloadedBuffer)
-              .resize({ width: 1080, height: 1080, fit: "cover" })
-              .png()
-              .toBuffer();
+            // Canh giữa ảnh trên canvas
+            const centerX = (canvasWidth - drawWidth) / 2;
+            const centerY = (canvasHeight - drawHeight) / 2;
 
-            image = sharp(Buffer.from(gradientBackground)).composite([
-              { input: resizedImageBuffer, gravity: "center" },
-            ]);
+            // Vẽ ảnh lên canvas mà không bị crop
+            ctx.drawImage(img, centerX, centerY, drawWidth, drawHeight);
 
-            let svgOverlay = `
-                <svg width="1080" height="1920">
-                 ${
-                   i === 0
-                     ? `  <defs>
-                    <linearGradient id="fadeGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-                      <stop offset="0%" stop-color="rgba(255,0,0,0.3)" />
-                      <stop offset="100%" stop-color="rgba(255,0,0,0)" />
-                    </linearGradient>
-                  </defs>`
-                     : ""
-                 }
-                
-                  <rect width="1080" height="1920" fill="url(#fadeGrad)" />
-                  ${
-                    i === 0
-                      ? `<text x="20" y="1600" font-size="60px" fill="white" font-family="sans-serif" font-weight="900">ẢNH MỘT ĐÂY NÀY</text>`
-                      : ""
-                  }
-                  <g transform="rotate(15 925,185)">
-                    <text x="900" y="170" font-size="70px" fill="white" font-family="sans-serif" font-weight="900">HOT</text>
-                    <text x="950" y="200" font-size="30px" fill="white" font-family="sans-serif" font-weight="900">NEWS</text>
-                  </g>
-                  <text x="20" y="160" font-size="30px" fill="white" font-family="sans-serif" font-weight="900">NGUỒN: TỔNG HỢP</text>
-                  <text x="20" y="200" font-size="30px" fill="white" font-family="sans-serif" font-weight="900">HÌNH ẢNH VIDEO: MINH HỌA</text>
-                </svg>`;
+            // Overlay text
+            ctx.fillStyle = "white";
+            ctx.font = "bold 60px sans-serif";
+            ctx.fillText("HOT NEWS", 750, 150);
+            ctx.font = "bold 30px sans-serif";
+            ctx.fillText("NGUỒN: TỔNG HỢP", 50, 100);
+            ctx.fillText("HÌNH ẢNH VIDEO: MINH HỌA", 50, 150);
 
-            image = image.composite([
-              { input: resizedImageBuffer, gravity: "center" },
-              { input: Buffer.from(svgOverlay), gravity: "south" },
-            ]);
-
-            const finalBuffer = await image.png().toBuffer();
-
-            await fs.promises.writeFile(localPath, finalBuffer);
+            // Save image
+            const buffer = canvas.toBuffer("image/png");
+            await fs.promises.writeFile(localPath, buffer);
             localImages[i] = localPath;
           } catch (err) {
             console.error(`Error processing image ${imagePath}:`, err);
@@ -130,7 +148,7 @@ app.post("/slideshow", async (req, res) => {
       },
       transitionOptions: {
         transitionDuration: 250,
-        imageTransition: "smoothleft",
+        imageTransition: "smoothright",
         loopTransition: "fadeslow",
       },
       ffmpegOptions: {
@@ -138,18 +156,12 @@ app.post("/slideshow", async (req, res) => {
       },
     };
 
-    // Generate slideshow video
     try {
-      /**@see https://0x464e.github.io/slideshow-video/ */
       const result = await createSlideshow([...localImages], "", options);
       fs.writeFileSync(outputVideo, result.buffer);
       res.sendFile(
         outputVideo,
-        {
-          headers: {
-            "Content-Type": "video/mp4",
-          },
-        },
+        { headers: { "Content-Type": "video/mp4" } },
         (err) => {
           if (err) {
             console.error("Error sending file:", err);
@@ -203,7 +215,6 @@ app.post("/tts", async (req, res) => {
         res.sendFile(pathTo);
       };
 
-      // If the speed is not equal to 1, adjust the audio speed
       if (Number(speed) !== 1) {
         const atempo = Math.max(0.5, Math.min(2.0, speed));
         const ffmpegCmd = `ffmpeg -i "${tempFile}" -filter:a "atempo=${atempo}" -y "${filePath}"`;
@@ -213,13 +224,11 @@ app.post("/tts", async (req, res) => {
             console.error("FFmpeg Error:", error);
             return res.status(500).send("Error processing audio speed");
           }
-
           fs.unlink(tempFile, (unlinkErr) => {
             if (unlinkErr) {
               console.error("Error deleting temporary file:", unlinkErr);
             }
           });
-
           res.sendFile(filePath);
         });
       } else {
@@ -232,27 +241,42 @@ app.post("/tts", async (req, res) => {
   }
 });
 
-app.get("/clear-expired-files", async (req, res) => {
+app.get("/news", async (req, res) => {
   try {
-    await Promise.all([cleanupOldFiles(audioDir), cleanupOldFiles(videoDir)]);
-    console.log("✅ Expired files cleanup completed");
-
-    for (const url of TRIGGER_URLS) {
-      try {
-        await sleep(5000);
-        await fetch(url);
-        console.log(`✅ Request to ${url} succeeded`);
-      } catch (err) {
-        console.error(`❌ Request to ${url} failed:`, err);
-      }
-    }
-
-    res
-      .status(200)
-      .send("✅ Server is running, cleanup and requests completed");
+    const results = await fetchNewsData();
+    res.status(200).json(results);
   } catch (error) {
-    console.error("❌ Error in /clear-expired-files:", error);
-    res.status(500).send("❌ Server encountered an error");
+    res.status(500).send("Error fetching news");
+  }
+});
+
+function renderNewsTable(results) {
+  let htmlResponse =
+    "<html><body><h1>News</h1><table border='1'><tr><th>Title</th><th>Images</th><th>Audio</th></tr>";
+  results.forEach((newsItem) => {
+    htmlResponse += `<tr><td><strong>${newsItem.title}</strong></td><td>`;
+    if (newsItem.images && newsItem.images.length > 0) {
+      newsItem.images.forEach((image) => {
+        htmlResponse += `<img src="${image}" alt="${newsItem.title}" style="width:200px;"><br>`;
+      });
+    }
+    htmlResponse += `</td><td>`;
+    if (newsItem.audio) {
+      htmlResponse += `<audio controls><source src="${newsItem.audio}" type="audio/mpeg">Your browser does not support the audio element.</audio>`;
+    }
+    htmlResponse += `</td></tr>`;
+  });
+  htmlResponse += "</table></body></html>";
+  return htmlResponse;
+}
+
+app.get("/news-view", async (req, res) => {
+  try {
+    const results = await fetchNewsData();
+    const htmlResponse = renderNewsTable(results);
+    res.status(200).send(htmlResponse);
+  } catch (error) {
+    res.status(500).send("Error fetching news");
   }
 });
 
