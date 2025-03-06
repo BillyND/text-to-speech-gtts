@@ -152,7 +152,7 @@ function addHistoryItem(text, audioUrl) {
   historyItem.classList.add("p-3", "bg-gray-700", "rounded-md");
 
   historyItem.innerHTML = `
-    <p class="text-sm text-gray-300">${text}</p>
+    <p class="text-sm text-gray-300">${text.slice(0, 50)}...</p>
     <audio controls class="w-full mt-2">
       <source src="${audioUrl}" type="audio/mp3">
     </audio>

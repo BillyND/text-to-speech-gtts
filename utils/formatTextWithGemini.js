@@ -19,7 +19,7 @@ async function formatTextWithGemini(text) {
                              VD2: "trí tuệ nhân tạo (AI)" => "AI".
                         - Các số dạng nghìn như là 4.000 thì loại bỏ dấu chấm ngắn cách giữa các số thành 4000.
                         - Hãy review thật kỹ các ký tự, số học mà khó đọc thì hãy biến đổi nó thành chữ dễ đọc.
-                        - Các ký tự đặc biệt không thuộc bảng chữ cái tiếng Việt sẽ được diễn giải dựa vào ngữ cảnh.
+                        - Các ký tự đặc biệt không thuộc bảng chữ cái tiếng Việt sẽ được diễn giải dựa vào ngữ cảnh (ví dụ: salim => sa lim).
                         - Xoá toàn bộ dấu ngoặc kép.
                         - Rút gọn một số câu để tóm gọn ý hơn.
                         - Xoá tên người viết bài, nguồn bài ở cuối bài.
@@ -35,6 +35,8 @@ async function formatTextWithGemini(text) {
     );
 
     const data = await response.json();
+
+    console.log("====>data", data?.candidates?.[0]?.content?.parts?.[0]?.text);
 
     return data?.candidates?.[0]?.content?.parts?.[0]?.text || text;
   } catch (error) {
