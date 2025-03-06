@@ -1,5 +1,4 @@
 const express = require("express");
-const { createCanvas, loadImage } = require("canvas");
 const gtts = require("gtts");
 const dotenv = require("dotenv");
 const fs = require("fs");
@@ -16,10 +15,6 @@ const port = process.env.PORT || 4000;
 app.use(express.json());
 app.use(express.static("public"));
 
-// Audio and video storage directories
-const audioDir = path.join(__dirname, "audio");
-const videoDir = path.join(__dirname, "videos");
-
 app.post("/tts", async (req, res) => {
   const {
     text,
@@ -33,7 +28,10 @@ app.post("/tts", async (req, res) => {
   }
 
   try {
-    await Promise.all([cleanupOldFiles(audioDir), cleanupOldFiles(videoDir)]);
+    // Audio and video storage directories
+    const audioDir = path.join(__dirname, "audio");
+
+    await cleanupOldFiles(audioDir);
     let formattedText = text.trim();
 
     if (isOptimizeWithAI && language === "vi") {
@@ -164,7 +162,3 @@ app.get("/news-view", async (req, res) => {
 app.listen(port, () =>
   console.log(`Server is running on http://localhost:${port}`)
 );
-
-// Cleanup expired files
-cleanupOldFiles(audioDir);
-cleanupOldFiles(videoDir);
