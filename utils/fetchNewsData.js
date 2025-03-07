@@ -17,6 +17,7 @@ const NewsSchema = new mongoose.Schema({
   images: [String],
   audio: String,
   createdAt: { type: Date, default: Date.now },
+  isPosted: { type: Boolean, default: false },
   expireAt: {
     type: Date,
     default: Date.now,
