@@ -36,9 +36,27 @@ async function formatTextWithGemini(text) {
 
     const data = await response.json();
 
-    console.log("====>data", data?.candidates?.[0]?.content?.parts?.[0]?.text);
+    console.log(
+      "====>data",
+      data &&
+        data.candidates &&
+        data.candidates[0] &&
+        data.candidates[0].content &&
+        data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0] &&
+        data.candidates[0].content.parts[0].text
+    );
 
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || text;
+    return (
+      (data &&
+        data.candidates &&
+        data.candidates[0] &&
+        data.candidates[0].content &&
+        data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0] &&
+        data.candidates[0].content.parts[0].text) ||
+      text
+    );
   } catch (error) {
     console.error("Error formatting text with Gemini:", error);
     return text; // Return original text if API fails

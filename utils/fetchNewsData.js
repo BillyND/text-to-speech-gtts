@@ -67,24 +67,39 @@ const fetchNewsData = async () => {
           if (scriptTag) {
             const scriptContent = scriptTag.textContent;
 
-            const domainStorage =
-              scriptContent.match(/domainStorage:\s*'([^']+)'/)?.[1] ||
-              "Not found";
+            const match = scriptContent.match(/domainStorage:\s*'([^']+)'/);
+            const domainStorage = match && match[1] ? match[1] : "Not found";
 
+            const matchNewsId = scriptContent.match(/newsId:\s*'([^']+)'/);
             const newsId =
-              scriptContent.match(/newsId:\s*'([^']+)'/)?.[1] || "Not found";
+              matchNewsId && matchNewsId[1] ? matchNewsId[1] : "Not found";
 
+            const matchDistributionDate = scriptContent.match(
+              /distributionDate:\s*'([^']+)'/
+            );
             const distributionDate =
-              scriptContent.match(/distributionDate:\s*'([^']+)'/)?.[1] ||
-              "Not found";
+              matchDistributionDate && matchDistributionDate[1]
+                ? matchDistributionDate[1]
+                : "Not found";
 
+            const matchNameSpace = scriptContent.match(
+              /nameSpace:\s*'([^']+)'/
+            );
             const nameSpace =
-              scriptContent.match(/nameSpace:\s*'([^']+)'/)?.[1] || "Not found";
+              matchNameSpace && matchNameSpace[1]
+                ? matchNameSpace[1]
+                : "Not found";
 
-            const ext = scriptContent.match(/ext:\s*'([^']+)'/)?.[1] || "m4a";
+            const matchExt = scriptContent.match(/ext:\s*'([^']+)'/);
+            const ext = matchExt && matchExt[1] ? matchExt[1] : "m4a";
 
+            const matchDefaultVoice = scriptContent.match(
+              /defaultVoice:\s*'([^']+)'/
+            );
             const defaultVoice =
-              scriptContent.match(/defaultVoice:\s*'([^']+)'/)?.[1] || "nu";
+              matchDefaultVoice && matchDefaultVoice[1]
+                ? matchDefaultVoice[1]
+                : "nu";
 
             const audioUrl = `${domainStorage}/${distributionDate}/${nameSpace}-${defaultVoice}-${newsId}.${ext}`;
             try {
