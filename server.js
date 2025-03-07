@@ -6,7 +6,7 @@ const path = require("path");
 const { exec } = require("child_process");
 const { cleanupOldFiles } = require("./utils/cleanupOldFiles");
 const { formatTextWithGemini } = require("./utils/formatTextWithGemini");
-const { fetchNewsData } = require("./utils/fetchNewsData");
+const { fetchNewsData, connectDB } = require("./utils/fetchNewsData");
 
 dotenv.config();
 const app = express();
@@ -167,6 +167,7 @@ app.get("/", (req, res) => {
   res.status(200).send("Hello, world!");
 });
 
-app.listen(port, () =>
-  console.log(`Server is running on http://localhost:${port}`)
-);
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+  connectDB();
+});
