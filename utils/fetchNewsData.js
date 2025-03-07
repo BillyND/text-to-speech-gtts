@@ -47,8 +47,8 @@ const processAndSaveNewsData = async () => {
         .filter((href) => !href.startsWith("http"))
     );
 
-    const articlePromises = Array.from(articleUrls).map(async (href) => {
-      if (!href) return;
+    for (const href of articleUrls) {
+      if (!href) continue;
 
       try {
         const url = `${baseUrl}${href}`;
@@ -150,9 +150,7 @@ const processAndSaveNewsData = async () => {
       } catch (error) {
         console.error(`Error fetching ${href}:`, error.message);
       }
-    });
-
-    await Promise.all(articlePromises);
+    }
 
     return results;
   } catch (error) {
