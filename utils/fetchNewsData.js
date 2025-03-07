@@ -9,10 +9,19 @@ const CACHE_DURATION = 3600 * 1000; // 1 hour in milliseconds
 const CACHE_DIR = path.join(ROOT_DIR, "cache");
 const CACHE_FILE = path.join(CACHE_DIR, "news-data.json");
 
+// Biến local để lưu cache trong bộ nhớ khi có lỗi file
+let memoryCache = null;
+
 // Đảm bảo thư mục cache tồn tại
 const ensureCacheDir = () => {
-  if (!fs.existsSync(CACHE_DIR)) {
-    fs.mkdirSync(CACHE_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(CACHE_DIR)) {
+      fs.mkdirSync(CACHE_DIR, { recursive: true });
+    }
+    return true;
+  } catch (error) {
+    console.error("Error creating cache directory:", error);
+    return false;
   }
 };
 
@@ -21,10 +30,18 @@ const readCache = () => {
   try {
     if (fs.existsSync(CACHE_FILE)) {
       const data = fs.readFileSync(CACHE_FILE, "utf8");
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      // Cập nhật memory cache khi đọc file thành công
+      memoryCache = parsed;
+      return parsed;
     }
   } catch (error) {
     console.error("Error reading cache file:", error);
+    // Nếu có lỗi đọc file, trả về memory cache nếu có
+    if (memoryCache) {
+      console.log("Using memory cache as fallback");
+      return memoryCache;
+    }
   }
   return null;
 };
@@ -32,17 +49,28 @@ const readCache = () => {
 // Ghi dữ liệu cache vào file
 const writeCache = (data) => {
   try {
-    ensureCacheDir();
-    fs.writeFileSync(
-      CACHE_FILE,
-      JSON.stringify({
-        data,
-        timestamp: Date.now(),
-      }),
-      "utf8"
-    );
+    const dirExists = ensureCacheDir();
+    if (!dirExists) {
+      throw new Error("Failed to create cache directory");
+    }
+
+    const cacheData = {
+      data,
+      timestamp: Date.now(),
+    };
+
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(cacheData), "utf8");
+
+    // Luôn cập nhật memory cache khi có dữ liệu mới
+    memoryCache = cacheData;
   } catch (error) {
     console.error("Error writing cache file:", error);
+    // Khi có lỗi ghi file, vẫn lưu vào memory cache
+    memoryCache = {
+      data,
+      timestamp: Date.now(),
+    };
+    console.log("Cache saved to memory due to file error");
   }
 };
 
@@ -68,7 +96,7 @@ const fetchNewsData = async () => {
   const cleanText = (text) => text.replace(/\n/g, " ").trim();
 
   try {
-    // Đọc cache từ file
+    // Đọc cache từ file (hoặc từ memory nếu có lỗi file)
     const cache = readCache();
 
     // Nếu có cache hợp lệ, trả về cache và cập nhật cache mới trong nền
@@ -207,6 +235,11 @@ const fetchNewsData = async () => {
     }
   } catch (error) {
     console.error("Error fetching news:", error);
+    // Nếu có lỗi và có memory cache, sử dụng memory cache làm fallback
+    if (memoryCache && isCacheValid(memoryCache)) {
+      console.log("Using memory cache as fallback after fetch error");
+      return memoryCache.data;
+    }
     throw error;
   }
 };

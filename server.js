@@ -163,6 +163,10 @@ app.get("/news-view", async (req, res) => {
   }
 });
 
+app.get("/", (req, res) => {
+  res.status(200).send("Hello, world!");
+});
+
 app.listen(port, () =>
   console.log(`Server is running on http://localhost:${port}`)
 );
