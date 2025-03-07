@@ -17,6 +17,11 @@ const NewsSchema = new mongoose.Schema({
   images: [String],
   audio: String,
   createdAt: { type: Date, default: Date.now },
+  expireAt: {
+    type: Date,
+    default: Date.now,
+    expires: 2 * 24 * 3600, // 2 days in seconds
+  },
 });
 
 const News = mongoose.model("News", NewsSchema);
