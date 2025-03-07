@@ -1,6 +1,12 @@
 const fetch = require("node-fetch");
 const { JSDOM } = require("jsdom");
 
+let cache = {
+  data: null,
+  timestamp: null,
+};
+const CACHE_DURATION = 3600 * 1000; // 1 hour in milliseconds
+
 const fetchNewsData = async () => {
   const baseUrl = "https://kenh14.vn";
   const results = [];
@@ -13,6 +19,16 @@ const fetchNewsData = async () => {
   const cleanText = (text) => text.replace(/\n/g, " ").trim();
 
   try {
+    const now = Date.now();
+    if (
+      cache.data &&
+      cache.timestamp &&
+      now - cache.timestamp < CACHE_DURATION
+    ) {
+      console.log("Returning cached data");
+      return cache.data;
+    }
+
     const response = await fetch(`${baseUrl}/doi-song.chn`);
     const text = await response.text();
     const dom = new JSDOM(text);
@@ -89,6 +105,7 @@ const fetchNewsData = async () => {
           }
 
           const item = {
+            url,
             title: title ? cleanText(title.textContent) : "",
             images: Array.from(imageEls)
               .map((img) => img.src)
@@ -106,6 +123,10 @@ const fetchNewsData = async () => {
     );
 
     console.log(`Number of results: ${results.length}`);
+    cache = {
+      data: results,
+      timestamp: now,
+    };
     return results;
   } catch (error) {
     console.error("Error fetching news:", error);
