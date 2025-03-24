@@ -13,7 +13,7 @@ async function formatTextWithGemini(text) {
             {
               parts: [
                 {
-                  text: `Làm phẳng văn bản để dễ đọc hơn.
+                  text: `Làm phẳng văn bản để dễ đọc hơn trong text to speech.
                         - Loại bỏ các từ giải thích khi dùng mở ngoặc. Cụm liên quan đến "text to speech" thì giữ nguyên.
                              VD1: "Bảng xếp hạng (BXH)" => "bảng xếp hạng"
                              VD2: "trí tuệ nhân tạo (AI)" => "AI".
@@ -25,7 +25,7 @@ async function formatTextWithGemini(text) {
                         - Xoá tên người viết bài, nguồn bài ở cuối bài.
                         - Các yêu cầu của tôi bên trên, hãy review kỹ như một người viết báo chuyên nghiệp, làm theo yêu cầu lần lượt một.
                         - Đây là nội dung của tôi cần làm phẳng "${text}".
-                        - Trả về kết quả đã xử lý mà không kèm bất kỳ câu trả lời phụ nào.`,
+                        - Trả về kết quả đã xử lý mà không kèm bất kỳ câu trả lời phụ nào, không tự thêm bất kỳ ký tự đặc biệt nào như là xuống dòng hay dấu *, dấu -, giữ nguyên chỉ là đoạn văn, không cần format `,
                 },
               ],
             },
